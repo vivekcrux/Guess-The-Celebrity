@@ -11,6 +11,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.InputStream;
@@ -36,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     Button button1;
     Button button2;
     Button button3;
+    ProgressBar progressBar;
 
     public void checkAnswer(View view){
         if(view.getTag().toString().equals(Integer.toString(correctPosition))) {
@@ -75,96 +78,44 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public class DownloadTask extends AsyncTask<String,Void,String>{
+    public class DownloadTask extends AsyncTask<String,Integer,String>{
 
         @Override
         protected String doInBackground(String... urls) {
 
-            String result = "";
-
-            try {
-
-                URL url = new URL(urls[0]);
-                HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-
-                InputStream in = connection.getInputStream();
-
-                InputStreamReader reader = new InputStreamReader(in);
-
-                int data = reader.read();
-
-                while(data != -1){
-                    result += (char)data;
-                    data = reader.read();
-                }
-
-                return result;
-
-            }
-            catch (Exception e) {
-
-                e.printStackTrace();
-
-            }
-            return null;
-        }
-    }
-
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        imageView = (ImageView)findViewById(R.id.imageView);
-        button0 = (Button)findViewById(R.id.button0);
-        button1 = (Button)findViewById(R.id.button1);
-        button2 = (Button)findViewById(R.id.button2);
-        button3 = (Button)findViewById(R.id.button3);
-
-        //DownloadTask webContent = new DownloadTask();
-        try {
-            /*
-            //https://twittercounter.com/pages/100/india
-            String result = webContent.execute("https://twittercounter.com/pages/100/india/").get();
-            //System.out.println(result);
-            //Log.i("Content",result);
-
-            String tempSplitResult[] = result.split("<div id=\"left-menu\">");
-            String finalSplitResult[] = tempSplitResult[1].split("<!-- end container-large -->");
-
-            Pattern p = Pattern.compile("class=\"avatar\" src=\"(.*?)\">");
-            Matcher m = p.matcher(finalSplitResult[0]);
-
-            while(m.find()){
-                celebs.add(m.group(1));
-            }
-
-            p = Pattern.compile("alt=\"(.*?)\"");
-            m = p.matcher(finalSplitResult[0]);
-
-            while(m.find()){
-                names.add(m.group(1));
-            }
-            */
-
             String finalResult = "";
+            for (int i = 0; i < urls.length; i++) {
+                try {
 
-            for(int i = 1; i < 6; i++ ){
+                    String result = "";
+                    URL url = new URL(urls[0]);
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
-                DownloadTask webContent = new DownloadTask();
-                String temp = "http://www.santabanta.com/images/gallery/?page=" + Integer.toString(i);
+                    InputStream in = connection.getInputStream();
 
-                String result = webContent.execute(temp).get();
-                //System.out.println(result);
-                //Log.i("Content",result);
+                    InputStreamReader reader = new InputStreamReader(in);
 
-                String contents[] = result.split("<!-- Begin comScore Tag -->");
-                result = contents[0];
-                finalResult += result;
+                    int data = reader.read();
+
+                    while (data != -1) {
+                        result += (char) data;
+                        data = reader.read();
+                    }
+
+                    String contents[] = result.split("<!-- Begin comScore Tag -->");
+                    result = contents[0];
+                    finalResult += result;
+
+                    publishProgress(i);
+
+                    //Log.i("result",result);
+
+                } catch (Exception e) {
+
+                    e.printStackTrace();
+
+                }
             }
-
-            System.out.println(finalResult);
 
             Pattern p = Pattern.compile("<img src=\"(.*?)\"");
             Matcher m = p.matcher(finalResult);
@@ -180,12 +131,52 @@ public class MainActivity extends AppCompatActivity {
                 names.add(m.group(1));
             }
 
+            return finalResult;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+
             while (!generateQuestion());
+            ((TextView)findViewById(R.id.waitTextView)).setVisibility(View.INVISIBLE);
+            progressBar.setVisibility(View.GONE);
 
         }
-        catch (Exception e) {
-            e.printStackTrace();
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            super.onProgressUpdate(values);
+            progressBar.setProgress(values[0]);
         }
+    }
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        imageView = (ImageView)findViewById(R.id.imageView);
+        button0 = (Button)findViewById(R.id.button0);
+        button1 = (Button)findViewById(R.id.button1);
+        button2 = (Button)findViewById(R.id.button2);
+        button3 = (Button)findViewById(R.id.button3);
+        progressBar = (ProgressBar) findViewById(R.id.progressBar);
+        progressBar.setMax(5);
+
+        //DownloadTask webContent = new DownloadTask();
+
+        String urls[] = new String[5];
+        for(int i = 1; i < 6; i++ ) {
+
+            urls[i-1] = "http://www.santabanta.com/images/gallery/?page=" + Integer.toString(i);
+
+        }
+
+        DownloadTask webContent = new DownloadTask();
+        webContent.execute(urls);
+
 
     }
     public boolean generateQuestion(){
